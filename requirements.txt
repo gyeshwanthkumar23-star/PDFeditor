@@ -1,0 +1,7 @@
+streamlit
+PyPDF2
+pdfplumber
+Pillow
+streamlit-lottie
+
+
