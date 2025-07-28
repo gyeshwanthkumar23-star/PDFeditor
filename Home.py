@@ -1,50 +1,65 @@
 import base64
 import streamlit as st
 
-def get_base64_video(video_file):
-    with open(video_file, 'rb') as f:
-        data = f.read()
-    return base64.b64encode(data).decode()
+def set_image_as_background(image_path):
+    with open(image_path, "rb") as img_file:
+        data = img_file.read()
+    encoded = base64.b64encode(data).decode()
+    css = f"""
+    <style>
+    .stApp {{
+        background: url("data:image/png;base64,{encoded}");
+        background-size: fit;
+        background-position: center center;
+        background-attachment: fixed;
+        color: gray;
+        font-family: 'Segoe UI', 'Arial', sans-serif;
+    }}
+    .stApp::before {{
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        background: gray;
+        pointer-events: none;
+        min-width: 100vw;
+        min-height: 100vh;
+    }}
+    h1, h2, h3, h4, h5, h6 {{
+        color: #4371d7 !important;
+        text-shadow: 1px 2px 7px rgba(130,150,200,0.11);
+        letter-spacing: 1px;
+    }}
+    .block-container {{
+        background: rgba(255,255,255,0.93);
+        border-radius: 22px;
+        margin-top: 2.5rem;
+        color: #232046;
+        border: 1.3px solid #6893d240;
+        box-shadow: 0 8px 32px rgba(100,130,255,0.10);
+    }}
+    section[data-testid="stSidebar"] {{
+        background: black !important;
+        color: #213;
+        border-radius: 10px;
+    }}
+    .stAlert, .stInfo, .stSuccess {{
+        background-color: black !important;
+        color: #1c2a3c !important;
+        border-radius: 13px;
+    }}
+    a, .stActionButton, .stDownloadButton {{
+        color: #4371d7 !important;
+        font-weight: 600;
+    }}
+    </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
 
-def set_mp4_as_background(video_path):
-    video_base64 = get_base64_video(video_path)
-    st.markdown(
-        f"""
-        <style>
-        .stApp {{
-            position: relative;
-            min-height: 100vh;
-            background: none !important;
-            color: #fff;
-            font-family: 'Segoe UI', 'Arial', sans-serif;
-        }}
-        #background-video {{
-            position: fixed;
-            top: 0; left: 0;
-            width: 100vw;
-            height: 100vh;
-            min-width: 100vw;
-            min-height: 100vh;
-            object-fit: fit;  /* Stretches video to cover the viewport */
-            z-index: -100;
-            opacity: 1.0;
-            pointer-events: none;
-            background: black;
-        }}
-        </style>
-        <video autoplay muted loop playsinline id="background-video">
-            <source src="data:video/mp4;base64,{video_base64}" type="video/mp4">
-        </video>
-        """,
-        unsafe_allow_html=True
-    )
-
-# Place your MP4 in 'assets/background.mp4'
-set_mp4_as_background("assets/background.mp4")
-
+# Place your image in 'assets/background.png' (you may change filename/extension as needed)
+set_image_as_background("assets/background.png")
 
 # ---- Main Content ----
-
 st.title("✨ Welcome to PDF Club")
 
 st.markdown(
