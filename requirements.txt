@@ -3,5 +3,5 @@ PyPDF2
 pdfplumber
 Pillow
 streamlit-lottie
-
+requests
 
