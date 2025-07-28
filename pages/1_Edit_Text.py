@@ -1,41 +1,67 @@
 import streamlit as st
+import requests
 import io
-from PyPDF2 import PdfReader, PdfWriter
-import pdfplumber
-from PIL import Image, ImageDraw, ImageFont
 
-st.markdown("# 📝 Edit PDF Text (Page Overwrite)")
-st.caption("⚡ Overwrites a PDF page with your text (rasterized, layout/fonts lost).")
+st.markdown("# 📝 In-Place PDF Text Edit (via PDF.co API)")
+st.caption("⚡ True PDF text editing—preserves layout, fonts, and all selectable text using PDF.co API.")
+
+# --- USER: ENTER YOUR API KEY HERE ---
+PDFCO_API_KEY = st.text_input("Paste your PDF.co API Key here:", type="password")
+st.write("Get your key from your PDF.co dashboard.")
 
 uploaded = st.file_uploader("Upload PDF", type="pdf")
-if uploaded:
-    pdf_bytes = uploaded.read()
-    reader = PdfReader(io.BytesIO(pdf_bytes))
-    num_pages = len(reader.pages)
-    page = st.number_input("Select page to edit", 0, num_pages-1, 0)
-    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf_doc:
-        old_text = pdf_doc.pages[page].extract_text() or ""
-    new_text = st.text_area("Type new content for page", value=old_text)
-    st.warning("This operation will overwrite the entire page as an image. All original layout, fonts, and links will be lost.")
-    if st.button("Replace Page Text"):
-        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf_doc:
-            base_img = pdf_doc.pages[page].to_image(resolution=150).original.convert("RGB")
-            draw = ImageDraw.Draw(base_img)
-            draw.rectangle([(0,0), base_img.size], fill="white")
-            font = ImageFont.load_default()
-            draw.text((24,28), new_text, fill="#233", font=font)
-            buff = io.BytesIO()
-            base_img.save(buff, format="PDF")
-            buff.seek(0)
-            new_page = PdfReader(buff).pages[0]
-        writer = PdfWriter()
-        for i in range(num_pages):
-            if i == page:
-                writer.add_page(new_page)
+if uploaded and PDFCO_API_KEY:
+    # Save PDF to temporary file to upload to PDF.co storage
+    with st.spinner("Uploading PDF to PDF.co..."):
+        files = {'file': uploaded}
+        stor_headers = {"x-api-key": PDFCO_API_KEY}
+        stor_url = "https://api.pdf.co/v1/file/upload/get-presigned-url?contenttype=application/pdf&name=uploaded.pdf"
+        presigned_resp = requests.get(stor_url, headers=stor_headers)
+        if presigned_resp.status_code == 200 and presigned_resp.json()["error"] == False:
+            upload_url = presigned_resp.json()["presignedUrl"]
+            file_url = presigned_resp.json()["url"]
+            put_resp = requests.put(upload_url, data=uploaded, headers={"Content-Type": "application/pdf"})
+        else:
+            st.error("Failed to get upload URL from PDF.co. Check your API key / credits.")
+            st.stop()
+    st.success("PDF file uploaded.")
+
+    # Ask user for find/replace details
+    st.markdown("## 👇 Text Replacement")
+    find_text = st.text_input("Text to replace (case sensitive, as it appears in the PDF):")
+    replace_text = st.text_input("Replace with (your new text):")
+    page_indexes = st.text_input(
+        "Pages to perform replace (e.g. `0`, `0-1,3` or leave empty for all pages):",
+        value=""
+    )
+    if st.button("Edit PDF Text (in place)"):
+        with st.spinner("Editing PDF text with PDF.co, please wait..."):
+            endpoint = "https://api.pdf.co/v1/pdf/edit/replace-text"
+            payload = {
+                "url": file_url,
+                "searchString": find_text,
+                "replaceString": replace_text,
+                "name": "edited.pdf",
+                "pages": page_indexes,
+            }
+            headers = {"x-api-key": PDFCO_API_KEY, "Content-Type": "application/json"}
+            api_resp = requests.post(endpoint, headers=headers, json=payload)
+            if api_resp.ok and not api_resp.json().get("error"):
+                download_url = api_resp.json().get("url")
+                # Download the edited PDF and serve to user
+                edited_pdf = requests.get(download_url).content
+                st.success("PDF text edited! Download below ⬇️")
+                st.download_button(
+                    label="Download Edited PDF",
+                    data=edited_pdf,
+                    file_name="edited_inplace.pdf",
+                    mime="application/pdf"
+                )
             else:
-                writer.add_page(reader.pages[i])
-        out = io.BytesIO()
-        writer.write(out)
-        st.download_button("Download Edited PDF", out.getvalue(), file_name="edited_text.pdf")
-    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf_doc:
-        st.image(pdf_doc.pages[page].to_image(resolution=150).original, caption="Preview")
+                st.error(f"PDF.co error: {api_resp.text}")
+
+st.info("""
+- **Limitation:** Find/replace is *case sensitive* and replaces all matches on chosen pages.
+- **Supported by PDF.co API:** True in-place PDF edits with original layout preserved.
+- **No changes made if 'Text to replace' is not found in the PDF content.
+""")
