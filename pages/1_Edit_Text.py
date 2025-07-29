@@ -5,12 +5,11 @@ import io
 st.markdown("# 📝 In-Place PDF Text Edit (via PDF.co API)")
 st.caption("⚡ True PDF text editing—preserves layout, fonts, and all selectable text using PDF.co API.")
 
-# --- USER: ENTER YOUR API KEY HERE ---
-PDFCO_API_KEY = st.text_input("Paste your PDF.co API Key here:", type="password")
-st.write("Get your key from your PDF.co dashboard.")
+# --- PUT YOUR API KEY HERE ---
+PDFCO_API_KEY = "sashindra126@gmail.com_0CnfpyoBLB5Dsv3bdu621HlFuoQGdUn4tpFetuDR5uMHob1Lsprg7sRDfdE317TK"   # <-- Replace this with your actual API key, keep the quotes
 
 uploaded = st.file_uploader("Upload PDF", type="pdf")
-if uploaded and PDFCO_API_KEY:
+if uploaded:
     # Save PDF to temporary file to upload to PDF.co storage
     with st.spinner("Uploading PDF to PDF.co..."):
         files = {'file': uploaded}
